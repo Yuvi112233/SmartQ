@@ -2,11 +2,22 @@
 
 ## Overview
 
-SmartQ is a full-stack queue management system designed for salons, boutiques, and barbers. It provides a dual-panel interface: one for customers to join the queue and another for barbers to manage the queue. The application uses a modern tech stack with React frontend, Express backend, and PostgreSQL database.
+SmartQ is a comprehensive queue management system designed for salons, boutiques, and barbers. It features a multi-panel interface with customer registration, queue tracking, admin authentication, and WhatsApp integration. The application uses a modern tech stack with React frontend, Express backend, JWT authentication, and WhatsApp messaging via Baileys.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Recent Changes (January 2025)
+
+✓ Added admin authentication system with JWT tokens
+✓ Implemented WhatsApp integration using Baileys library
+✓ Created customer queue tracking with real-time updates
+✓ Added customer "now" page for turn notifications
+✓ Enhanced phone number validation (Indian format)
+✓ Implemented duplicate entry prevention
+✓ Added customer arrival confirmation system
+✓ Created comprehensive admin dashboard with queue management
 
 ## System Architecture
 
@@ -34,17 +45,39 @@ Preferred communication style: Simple, everyday language.
 
 ### Customer Panel (`/customer`)
 - Mobile-first responsive design
-- Simple form with name and phone validation
+- Simple form with name and phone validation (Indian format)
 - Real-time queue status updates
 - Queue position tracking
 - Estimated wait time display
+- Duplicate entry prevention
+- Automatic redirect to queue tracking
+
+### Customer Queue Page (`/customer/queue`)
+- Real-time queue position tracking
+- Live queue overview with masked phone numbers
+- Progress bar showing queue advancement
+- Auto-redirect when customer's turn arrives
+- 5-second polling for updates
+
+### Customer Now Page (`/customer/now`)
+- Turn notification page for first-in-queue customers
+- Arrival confirmation button
+- WhatsApp message integration
+- Thank you page after confirmation
 
 ### Barber Panel (`/barber`)
-- Admin interface for queue management
+- Public interface for queue management
 - Live queue display with auto-refresh
 - "Call Next" functionality (removes first person)
 - Individual customer removal capability
 - Queue statistics and metrics
+
+### Admin Dashboard (`/admin/dashboard`)
+- Secure admin interface with JWT authentication
+- Enhanced queue management with status tracking
+- WhatsApp integration for customer notifications
+- Real-time connection status monitoring
+- Advanced queue statistics and controls
 
 ### Shared Components
 - Reusable UI components from shadcn/ui
@@ -56,21 +89,51 @@ Preferred communication style: Simple, everyday language.
 
 1. **Customer Joins Queue**:
    - Customer fills form on `/customer` page
-   - Form validation using Zod schema
+   - Form validation using Zod schema (Indian phone format)
+   - Duplicate entry prevention check
    - POST request to `/api/queue` endpoint
-   - Database entry created with timestamp
-   - Success confirmation displayed
+   - Phone number stored in localStorage
+   - Automatic redirect to `/customer/queue`
 
-2. **Queue Management**:
-   - Barber views live queue on `/barber` page
-   - Real-time updates via polling (3-5 second intervals)
-   - Queue operations trigger database updates
-   - UI updates automatically via React Query
+2. **Queue Tracking**:
+   - Real-time position updates via polling
+   - Auto-redirect to `/customer/now` when first in queue
+   - Progress tracking and wait time estimates
+   - Queue overview with masked phone numbers
 
-3. **Data Synchronization**:
+3. **Customer Turn**:
+   - Notification page shows when it's customer's turn
+   - Arrival confirmation button
+   - WhatsApp message sent (if admin connected)
+   - Status update to "reached" in database
+
+4. **Admin Management**:
+   - JWT-based authentication
+   - WhatsApp session management
+   - Enhanced queue controls with status tracking
+   - Real-time messaging integration
+
+5. **Data Synchronization**:
    - TanStack Query manages caching and background updates
-   - Optimistic updates for better UX
+   - JWT token authentication for admin features
+   - WhatsApp service status monitoring
    - Error handling with user-friendly messages
+
+## API Endpoints
+
+### Public Endpoints
+- `POST /api/queue` - Add customer to queue
+- `GET /api/queue` - Get current queue
+- `GET /api/queue/position/:phone` - Get queue position
+- `GET /api/queue/customer/:phone` - Get customer info
+- `POST /api/customer/reached/:phone` - Confirm customer arrival
+
+### Admin Endpoints (JWT Protected)
+- `POST /api/admin/login` - Admin authentication
+- `GET /api/whatsapp/status` - WhatsApp connection status
+- `POST /api/whatsapp/send/:phone` - Send WhatsApp message
+- `POST /api/queue/call-next` - Call next customer with message
+- `DELETE /api/queue/:id` - Remove customer from queue
 
 ## External Dependencies
 

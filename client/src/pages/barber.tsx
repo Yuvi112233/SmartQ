@@ -18,6 +18,7 @@ export default function Barber() {
 
   const callNextMutation = useMutation({
     mutationFn: async () => {
+      // For the public barber panel, we'll use the old method
       if (queue.length === 0) {
         throw new Error("No customers in queue");
       }
@@ -72,6 +73,9 @@ export default function Barber() {
               </Button>
               <Button variant="default" size="sm" asChild>
                 <Link href="/barber">Barber Panel</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="text-gray-600">
+                <Link href="/admin/login">Admin</Link>
               </Button>
             </nav>
           </div>

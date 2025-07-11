@@ -32,6 +32,9 @@ export default function Customer() {
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/barber">Barber Panel</Link>
               </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/admin/login">Admin</Link>
+              </Button>
             </nav>
           </div>
         </div>

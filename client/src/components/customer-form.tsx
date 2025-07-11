@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export function CustomerForm() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const form = useForm<InsertQueueEntry>({
     resolver: zodResolver(insertQueueEntrySchema),
@@ -30,14 +32,22 @@ export function CustomerForm() {
       const response = await apiRequest("POST", "/api/queue", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/queue"] });
       setIsSubmitted(true);
-      form.reset();
+      
+      // Store phone number in localStorage
+      localStorage.setItem("customerPhone", variables.phone);
+      
       toast({
         title: "Success!",
         description: "You've been added to the queue. Please wait for your turn.",
       });
+      
+      // Redirect to queue page
+      setTimeout(() => {
+        navigate("/customer/queue");
+      }, 1000);
     },
     onError: (error) => {
       toast({
