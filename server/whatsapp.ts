@@ -9,6 +9,8 @@ export class WhatsAppService {
   private isConnected = false;
   private authDir = path.join(process.cwd(), "auth_info");
   private io: Server | null = null;
+  private currentQR: string | null = null;
+  private sessionExists = false;
 
   setSocketIO(io: Server) {
     this.io = io;
@@ -21,11 +23,15 @@ export class WhatsAppService {
         fs.mkdirSync(this.authDir, { recursive: true });
       }
 
+      // Check if session files exist
+      this.sessionExists = this.checkSessionExists();
+      console.log(`Session exists: ${this.sessionExists}`);
+
       const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
       
       this.socket = makeWASocket({
         auth: state,
-        printQRInTerminal: true,
+        printQRInTerminal: false, // Disable terminal QR to avoid deprecated warning
         browser: ["SmartQ", "Chrome", "1.0.0"],
       });
 
@@ -33,7 +39,8 @@ export class WhatsAppService {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-          console.log("QR Code generated. Scan it with your WhatsApp app.");
+          console.log("QR Code generated for WhatsApp connection");
+          this.currentQR = qr;
           if (this.io) {
             this.io.emit('qr', qr);
           }
@@ -43,17 +50,26 @@ export class WhatsAppService {
           const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
           console.log("Connection closed due to ", lastDisconnect?.error, ", reconnecting ", shouldReconnect);
           this.isConnected = false;
+          this.currentQR = null;
           
           if (this.io) {
             this.io.emit('disconnected');
           }
           
+          // If logged out, clear session
+          if ((lastDisconnect?.error as Boom)?.output?.statusCode === DisconnectReason.loggedOut) {
+            this.clearSession();
+            this.sessionExists = false;
+          }
+          
           if (shouldReconnect) {
-            this.initialize();
+            setTimeout(() => this.initialize(), 3000); // Add delay for reconnection
           }
         } else if (connection === "open") {
-          console.log("WhatsApp connection opened");
+          console.log("WhatsApp connection opened successfully");
           this.isConnected = true;
+          this.currentQR = null;
+          this.sessionExists = true;
           
           if (this.io) {
             this.io.emit('connected');
@@ -67,6 +83,25 @@ export class WhatsAppService {
     } catch (error) {
       console.error("WhatsApp initialization failed:", error);
       return false;
+    }
+  }
+
+  private checkSessionExists(): boolean {
+    try {
+      const credsPath = path.join(this.authDir, "creds.json");
+      return fs.existsSync(credsPath);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private clearSession(): void {
+    try {
+      if (fs.existsSync(this.authDir)) {
+        fs.rmSync(this.authDir, { recursive: true, force: true });
+      }
+    } catch (error) {
+      console.error("Failed to clear session:", error);
     }
   }
 
@@ -92,6 +127,10 @@ export class WhatsAppService {
     return this.isConnected;
   }
 
+  hasValidSession(): boolean {
+    return this.sessionExists;
+  }
+
   async disconnect(): Promise<void> {
     if (this.socket) {
       await this.socket.logout();
@@ -100,10 +139,38 @@ export class WhatsAppService {
     }
   }
 
+  async clearSessionAndReconnect(): Promise<boolean> {
+    try {
+      // Disconnect current session
+      await this.disconnect();
+      
+      // Clear session files
+      this.clearSession();
+      this.sessionExists = false;
+      this.currentQR = null;
+      
+      // Reinitialize (this will generate new QR)
+      return await this.initialize();
+    } catch (error) {
+      console.error("Failed to clear session and reconnect:", error);
+      return false;
+    }
+  }
+
   getQRCode(): string | null {
-    // In a real implementation, you might want to store the QR code
-    // For now, we'll rely on the console output
-    return null;
+    return this.currentQR;
+  }
+
+  getConnectionStatus(): {
+    connected: boolean;
+    sessionExists: boolean;
+    qrCode: string | null;
+  } {
+    return {
+      connected: this.isConnected,
+      sessionExists: this.sessionExists,
+      qrCode: this.currentQR,
+    };
   }
 }
 

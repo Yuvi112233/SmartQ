@@ -22,6 +22,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Added Socket.IO for real-time WhatsApp connection monitoring
 ✓ Implemented WhatsApp reconnection system with QR code display
 ✓ Added real-time connection status updates via Socket.IO
+✓ Enhanced WhatsApp with persistent session storage (Jan 11, 2025)
+✓ Fixed 401 authentication errors with session-based auth
+✓ Added mobile-friendly WhatsApp reconnection with QR modal
+✓ Implemented automatic session detection and recovery
 
 ## System Architecture
 

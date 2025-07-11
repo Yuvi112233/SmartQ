@@ -120,24 +120,48 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
   // Check WhatsApp session status (accessible without strict auth to prevent 401 spam)
   app.get("/api/whatsapp/status", async (req, res) => {
     try {
-      const isActive = whatsappService.isSessionActive();
-      res.json({ connected: isActive });
+      const status = whatsappService.getConnectionStatus();
+      res.json(status);
     } catch (error) {
       res.status(500).json({ message: "Failed to check WhatsApp status" });
+    }
+  });
+
+  // Get QR code for WhatsApp authentication
+  app.get("/api/whatsapp/qr", async (req, res) => {
+    try {
+      const qrCode = whatsappService.getQRCode();
+      if (qrCode) {
+        res.json({ qrCode });
+      } else {
+        res.status(404).json({ message: "No QR code available" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get QR code" });
     }
   });
 
   // WhatsApp reconnection endpoint
   app.post("/api/whatsapp/login", requireAuth, async (req, res) => {
     try {
-      // Force disconnect existing connection
-      await whatsappService.disconnect();
+      const { clearSession } = req.body;
       
-      // Reinitialize connection
-      const success = await whatsappService.initialize();
+      let success;
+      if (clearSession) {
+        // Clear existing session and generate new QR
+        success = await whatsappService.clearSessionAndReconnect();
+      } else {
+        // Try to reconnect with existing session
+        await whatsappService.disconnect();
+        success = await whatsappService.initialize();
+      }
       
       if (success) {
-        res.json({ message: "WhatsApp reconnecting..." });
+        const status = whatsappService.getConnectionStatus();
+        res.json({ 
+          message: clearSession ? "New WhatsApp session initiated" : "WhatsApp reconnecting...",
+          status
+        });
       } else {
         res.status(500).json({ message: "Failed to start WhatsApp reconnection" });
       }

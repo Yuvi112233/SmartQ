@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Clock, Phone, LogOut, Wifi, WifiOff, MessageCircle, X } from "lucide-react";
+import { Users, Clock, Phone, LogOut, Wifi, WifiOff, MessageCircle, X, RefreshCw, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,11 @@ export default function AdminDashboard() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+  const [whatsAppStatus, setWhatsAppStatus] = useState<{
+    connected: boolean;
+    sessionExists: boolean;
+    qrCode: string | null;
+  }>({ connected: false, sessionExists: false, qrCode: null });
 
   // Check if admin is authenticated
   useEffect(() => {
@@ -68,6 +73,13 @@ export default function AdminDashboard() {
         if (response.ok) {
           const data = await response.json();
           setIsWhatsAppConnected(data.connected);
+          setWhatsAppStatus(data);
+          
+          // If QR code is available, show it
+          if (data.qrCode && !data.connected) {
+            setQrCode(data.qrCode);
+            setShowQRModal(true);
+          }
         }
       } catch (error) {
         console.log("Failed to check initial WhatsApp status:", error);
@@ -147,7 +159,7 @@ export default function AdminDashboard() {
   });
 
   const reconnectWhatsAppMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (clearSession: boolean = false) => {
       const token = localStorage.getItem("adminToken");
       const response = await fetch("/api/whatsapp/login", {
         method: "POST",
@@ -156,6 +168,7 @@ export default function AdminDashboard() {
           "Content-Type": "application/json",
         },
         credentials: "include",
+        body: JSON.stringify({ clearSession }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -163,11 +176,23 @@ export default function AdminDashboard() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "WhatsApp Reconnecting",
-        description: "WhatsApp connection is being reestablished...",
+        description: data.message || "WhatsApp connection is being reestablished...",
       });
+      
+      // Update status immediately
+      if (data.status) {
+        setWhatsAppStatus(data.status);
+        setIsWhatsAppConnected(data.status.connected);
+        
+        // Show QR modal if needed
+        if (data.status.qrCode && !data.status.connected) {
+          setQrCode(data.status.qrCode);
+          setShowQRModal(true);
+        }
+      }
     },
     onError: (error) => {
       toast({
@@ -217,15 +242,31 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="flex items-center space-x-2 text-red-400">
                     <WifiOff className="h-4 w-4" />
-                    <span className="text-sm">WhatsApp Disconnected</span>
-                    <Button
-                      onClick={() => reconnectWhatsAppMutation.mutate()}
-                      disabled={reconnectWhatsAppMutation.isPending}
-                      size="sm"
-                      variant="outline"
-                    >
-                      {reconnectWhatsAppMutation.isPending ? "Reconnecting..." : "Reconnect"}
-                    </Button>
+                    <span className="text-sm">
+                      {whatsAppStatus.sessionExists ? "WhatsApp Session Lost" : "WhatsApp Not Connected"}
+                    </span>
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => reconnectWhatsAppMutation.mutate(false)}
+                        disabled={reconnectWhatsAppMutation.isPending}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        {reconnectWhatsAppMutation.isPending ? "Reconnecting..." : "Reconnect"}
+                      </Button>
+                      {whatsAppStatus.sessionExists && (
+                        <Button
+                          onClick={() => reconnectWhatsAppMutation.mutate(true)}
+                          disabled={reconnectWhatsAppMutation.isPending}
+                          size="sm"
+                          variant="outline"
+                        >
+                          <QrCode className="h-3 w-3 mr-1" />
+                          New QR
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
