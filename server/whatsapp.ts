@@ -2,11 +2,17 @@ import { makeWASocket, DisconnectReason, useMultiFileAuthState, WASocket } from 
 import { Boom } from "@hapi/boom";
 import fs from "fs";
 import path from "path";
+import { Server } from "socket.io";
 
 export class WhatsAppService {
   private socket: WASocket | null = null;
   private isConnected = false;
   private authDir = path.join(process.cwd(), "auth_info");
+  private io: Server | null = null;
+
+  setSocketIO(io: Server) {
+    this.io = io;
+  }
 
   async initialize(): Promise<boolean> {
     try {
@@ -28,20 +34,30 @@ export class WhatsAppService {
         
         if (qr) {
           console.log("QR Code generated. Scan it with your WhatsApp app.");
+          if (this.io) {
+            this.io.emit('qr', qr);
+          }
         }
         
         if (connection === "close") {
           const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
           console.log("Connection closed due to ", lastDisconnect?.error, ", reconnecting ", shouldReconnect);
+          this.isConnected = false;
+          
+          if (this.io) {
+            this.io.emit('disconnected');
+          }
           
           if (shouldReconnect) {
             this.initialize();
-          } else {
-            this.isConnected = false;
           }
         } else if (connection === "open") {
           console.log("WhatsApp connection opened");
           this.isConnected = true;
+          
+          if (this.io) {
+            this.io.emit('connected');
+          }
         }
       });
 

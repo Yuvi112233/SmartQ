@@ -147,16 +147,9 @@ export class MemStorage implements IStorage {
   }
 
   async validateAdmin(username: string, password: string): Promise<Admin | null> {
-    console.log(`Login attempt for username: ${username}`);
     const admin = await this.getAdminByUsername(username);
-    console.log(`Admin found: ${admin ? 'Yes' : 'No'}`);
-    if (admin) {
-      console.log(`Comparing password with hash: ${admin.password.substring(0, 10)}...`);
-      const isValid = await bcrypt.compare(password, admin.password);
-      console.log(`Password valid: ${isValid}`);
-      if (isValid) {
-        return admin;
-      }
+    if (admin && await bcrypt.compare(password, admin.password)) {
+      return admin;
     }
     return null;
   }

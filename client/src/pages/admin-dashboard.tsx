@@ -1,18 +1,24 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Clock, Phone, LogOut, Wifi, WifiOff, MessageCircle } from "lucide-react";
+import { Users, Clock, Phone, LogOut, Wifi, WifiOff, MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { QueueEntry } from "@shared/schema";
+import { io } from "socket.io-client";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function AdminDashboard() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
 
   // Check if admin is authenticated
   useEffect(() => {
@@ -21,6 +27,42 @@ export default function AdminDashboard() {
       navigate("/admin/login");
     }
   }, [navigate]);
+
+  // Socket.IO connection
+  useEffect(() => {
+    const socket = io();
+    
+    socket.on('qr', (qrCodeData: string) => {
+      setQrCode(qrCodeData);
+      setShowQRModal(true);
+      setIsWhatsAppConnected(false);
+    });
+    
+    socket.on('connected', () => {
+      setIsWhatsAppConnected(true);
+      setQrCode(null);
+      setShowQRModal(false);
+      toast({
+        title: "WhatsApp Connected",
+        description: "WhatsApp is now connected and ready to send messages",
+      });
+    });
+    
+    socket.on('disconnected', () => {
+      setIsWhatsAppConnected(false);
+      setQrCode(null);
+      setShowQRModal(false);
+      toast({
+        title: "WhatsApp Disconnected",
+        description: "WhatsApp connection lost",
+        variant: "destructive",
+      });
+    });
+    
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
 
   const { data: queue = [], isLoading: queueLoading } = useQuery<QueueEntry[]>({
     queryKey: ["/api/queue"],
@@ -85,6 +127,37 @@ export default function AdminDashboard() {
     },
   });
 
+  const reconnectWhatsAppMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem("adminToken");
+      const response = await fetch("/api/whatsapp/login", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "WhatsApp Reconnecting",
+        description: "WhatsApp connection is being reestablished...",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
@@ -116,7 +189,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                {whatsappStatus?.connected ? (
+                {isWhatsAppConnected ? (
                   <div className="flex items-center space-x-2 text-green-400">
                     <Wifi className="h-4 w-4" />
                     <span className="text-sm">WhatsApp Connected</span>
@@ -125,6 +198,14 @@ export default function AdminDashboard() {
                   <div className="flex items-center space-x-2 text-red-400">
                     <WifiOff className="h-4 w-4" />
                     <span className="text-sm">WhatsApp Disconnected</span>
+                    <Button
+                      onClick={() => reconnectWhatsAppMutation.mutate()}
+                      disabled={reconnectWhatsAppMutation.isPending}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {reconnectWhatsAppMutation.isPending ? "Reconnecting..." : "Reconnect"}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -282,6 +363,31 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Code Modal */}
+      <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <MessageCircle className="h-5 w-5" />
+              <span>Connect WhatsApp</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Scan this QR code with your WhatsApp app to connect
+            </p>
+            {qrCode && (
+              <div className="p-4 bg-white rounded-lg">
+                <QRCodeSVG value={qrCode} size={256} />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground text-center">
+              Make sure you have WhatsApp installed on your phone
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

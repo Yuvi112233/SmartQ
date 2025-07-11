@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
 import { insertQueueEntrySchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
@@ -26,8 +27,11 @@ function authenticateToken(req: any, res: any, next: any) {
   });
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize WhatsApp service
+export async function registerRoutes(app: Express, io?: SocketIOServer): Promise<Server> {
+  // Initialize WhatsApp service with Socket.IO
+  if (io) {
+    whatsappService.setSocketIO(io);
+  }
   whatsappService.initialize();
 
   // Admin login
@@ -87,6 +91,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ connected: isActive });
     } catch (error) {
       res.status(500).json({ message: "Failed to check WhatsApp status" });
+    }
+  });
+
+  // WhatsApp reconnection endpoint
+  app.post("/api/whatsapp/login", authenticateToken, async (req, res) => {
+    try {
+      // Force disconnect existing connection
+      await whatsappService.disconnect();
+      
+      // Reinitialize connection
+      const success = await whatsappService.initialize();
+      
+      if (success) {
+        res.json({ message: "WhatsApp reconnecting..." });
+      } else {
+        res.status(500).json({ message: "Failed to start WhatsApp reconnection" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to reconnect WhatsApp" });
     }
   });
 
