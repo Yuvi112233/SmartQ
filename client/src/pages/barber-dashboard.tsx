@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { QueueEntry } from "@shared/schema";
+import { io } from "socket.io-client";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function BarberDashboard() {
   const [, navigate] = useLocation();
@@ -120,7 +122,86 @@ export default function BarberDashboard() {
     return date.toLocaleDateString();
   };
 
-  const isWhatsAppConnected = whatsappStatus?.connected || false;
+  // WhatsApp QR and connection logic (copied from admin dashboard)
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isWhatsAppConnected, setIsWhatsAppConnected] = useState(false);
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  const [qrCopied, setQrCopied] = useState(false);
+
+  useEffect(() => {
+    const socket = io();
+    socket.on('qr', (qrCodeData: string) => {
+      setQrCode(qrCodeData);
+      setIsWhatsAppConnected(false);
+    });
+    socket.on('connected', () => {
+      setIsWhatsAppConnected(true);
+      setQrCode(null);
+    });
+    socket.on('disconnected', () => {
+      setIsWhatsAppConnected(false);
+      setQrCode(null);
+    });
+    // Check initial connection status
+    const checkInitialStatus = async () => {
+      try {
+        const response = await fetch("/api/whatsapp/status", { credentials: "include" });
+        if (response.ok) {
+          const data = await response.json();
+          setIsWhatsAppConnected(data.connected);
+          if (data.qrCode && !data.connected) {
+            setQrCode(data.qrCode);
+          }
+        }
+      } catch {}
+    };
+    checkInitialStatus();
+    return () => { socket.disconnect(); };
+  }, []);
+
+  // Block dashboard with a full-screen modal if WhatsApp is not connected
+  if (!isWhatsAppConnected) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
+        <div className="max-w-md w-full p-6 bg-gray-800 rounded-lg shadow-lg flex flex-col items-center">
+          <MessageCircle className="h-8 w-8 mb-2 text-primary" />
+          <h2 className="text-2xl font-bold mb-2">Connect WhatsApp</h2>
+          <p className="text-sm text-gray-400 mb-4 text-center">
+            {isMobile
+              ? "You are on a mobile device. Scan this QR code using WhatsApp on another device, or tap the button below to copy the QR data."
+              : "Scan this QR code with your WhatsApp app to connect."}
+          </p>
+          {qrCode ? (
+            <div className="p-4 bg-white rounded-lg mb-4">
+              <QRCodeSVG value={qrCode} size={isMobile ? 180 : 256} />
+            </div>
+          ) : (
+            <div className="text-gray-400 mb-4">Waiting for QR code...</div>
+          )}
+          {isMobile && qrCode && (
+            <>
+              <Button
+                className="mb-2 w-full"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(qrCode);
+                  setQrCopied(true);
+                  setTimeout(() => setQrCopied(false), 2000);
+                }}
+              >
+                {qrCopied ? "Copied!" : "Copy QR Data"}
+              </Button>
+              <p className="text-xs text-gray-400 text-center mb-2">
+                Open WhatsApp, tap the three dots → Linked Devices → Link a Device, and paste the copied QR if needed.
+              </p>
+            </>
+          )}
+          <p className="text-xs text-gray-500 text-center">
+            Make sure you have WhatsApp installed on your phone. If you have trouble, try reconnecting or generating a new QR from another device.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -154,27 +235,6 @@ export default function BarberDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* WhatsApp Status Warning */}
-        {!isWhatsAppConnected && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <WifiOff className="h-5 w-5 text-yellow-600 mr-2" />
-                <p className="text-yellow-800">
-                  WhatsApp is not connected. Customer notifications will not be sent.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.reload()}
-              >
-                Reconnect
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Queue Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -285,22 +345,6 @@ export default function BarberDashboard() {
           </CardContent>
         </Card>
         
-        {/* WhatsApp Disconnected Overlay */}
-        {!isWhatsAppConnected && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 rounded-lg">
-            <div className="text-center">
-              <WifiOff className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-semibold text-gray-700 mb-2">WhatsApp Not Connected</p>
-              <p className="text-sm text-gray-500 mb-4">Please connect WhatsApp to manage queue</p>
-              <Button 
-                onClick={() => window.location.reload()}
-                variant="outline"
-              >
-                Reconnect
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
       </div>
     </div>

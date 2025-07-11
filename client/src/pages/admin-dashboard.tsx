@@ -25,6 +25,10 @@ export default function AdminDashboard() {
     qrCode: string | null;
   }>({ connected: false, sessionExists: false, qrCode: null });
 
+  // Add a utility to detect mobile
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  const [qrCopied, setQrCopied] = useState(false);
+
   // Check if admin is authenticated
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -231,6 +235,50 @@ export default function AdminDashboard() {
   const waitingQueue = queue.filter(entry => entry.status === "waiting");
   const calledQueue = queue.filter(entry => entry.status === "called");
   const reachedQueue = queue.filter(entry => entry.status === "reached");
+
+  // Block dashboard with a full-screen modal if WhatsApp is not connected
+  if (!isWhatsAppConnected) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
+        <div className="max-w-md w-full p-6 bg-slate-800 rounded-lg shadow-lg flex flex-col items-center">
+          <MessageCircle className="h-8 w-8 mb-2 text-primary" />
+          <h2 className="text-2xl font-bold mb-2">Connect WhatsApp</h2>
+          <p className="text-sm text-slate-400 mb-4 text-center">
+            {isMobile
+              ? "You are on a mobile device. Scan this QR code using WhatsApp on another device, or tap the button below to copy the QR data."
+              : "Scan this QR code with your WhatsApp app to connect."}
+          </p>
+          {qrCode ? (
+            <div className="p-4 bg-white rounded-lg mb-4">
+              <QRCodeSVG value={qrCode} size={isMobile ? 180 : 256} />
+            </div>
+          ) : (
+            <div className="text-slate-400 mb-4">Waiting for QR code...</div>
+          )}
+          {isMobile && qrCode && (
+            <>
+              <Button
+                className="mb-2 w-full"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(qrCode);
+                  setQrCopied(true);
+                  setTimeout(() => setQrCopied(false), 2000);
+                }}
+              >
+                {qrCopied ? "Copied!" : "Copy QR Data"}
+              </Button>
+              <p className="text-xs text-slate-400 text-center mb-2">
+                Open WhatsApp, tap the three dots → Linked Devices → Link a Device, and paste the copied QR if needed.
+              </p>
+            </>
+          )}
+          <p className="text-xs text-slate-500 text-center">
+            Make sure you have WhatsApp installed on your phone. If you have trouble, try reconnecting or generating a new QR from another device.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-white">
