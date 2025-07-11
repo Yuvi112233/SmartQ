@@ -1,0 +1,88 @@
+Build a full-stack MERN (MongoDB, Express, React, Node.js) application named SmartQ, a smart queue management system for salons, boutiques, and barbers.
+
+The app should have two main panels:
+
+✅ 1. Customer Panel (/customer)
+A clean, mobile-first responsive form built with React + Tailwind CSS
+
+Fields: Name and Phone Number (basic validation required)
+
+On submit, send a POST request to the backend API (/api/queue) to add the user to the queue
+
+Show a confirmation message: “✅ You’ve been added to the queue. Please wait for your turn.”
+
+(Optional) Display current position in queue by fetching from /api/queue/position/:phone
+
+✅ 2. Barber Panel (/barber)
+Admin view that shows the current live queue list
+
+Use GET /api/queue to fetch all current users
+
+Each entry should display: Name, Phone, Position, and Time Added
+
+Each entry should have two buttons:
+
+✅ Call Next → removes the first person from queue (send DELETE /api/queue/:id)
+
+❌ Remove → removes selected person (no-show)
+
+Display alert or toast when queue updates
+
+🔧 Backend Requirements:
+Use Node.js + Express + MongoDB (with Mongoose)
+
+Routes:
+POST /api/queue → Add a customer to the queue
+
+GET /api/queue → Return current live queue (sorted by time)
+
+DELETE /api/queue/:id → Remove a user from queue (used by admin)
+
+Mongoose Schema:
+js
+Copy
+Edit
+{
+  name: String,
+  phone: String,
+  timestamp: { type: Date, default: Date.now },
+  status: { type: String, default: "waiting" } // optional
+}
+📦 Folder Structure:
+/client → React frontend (React + Tailwind)
+
+/server → Node.js + Express backend
+
+Use MongoDB Atlas or local MongoDB
+
+🌐 Extras (Optional, if time permits):
+Add polling or Socket.io for real-time queue updates
+
+Add QR code support that links to /customer
+
+Add basic analytics like "Avg Wait Time" on admin panel
+
+✨ UI Design Guidance:
+Use Tailwind CSS for fast and clean styling
+
+Admin Panel: Dark theme with clear action buttons
+
+Customer Panel: Light theme, clean layout, mobile-friendly
+
+💡 Important Notes:
+No login/auth required for Phase 1
+
+Keep code modular and clean
+
+Ensure it’s deployable on Replit, Render, or Vercel
+
+🚀 Output Expected:
+Full working MERN app (client + server)
+
+React components should be in /client/src/components
+
+Backend routes in /server/routes
+
+Provide .env sample for MongoDB config
+
+Give README.md with run instructions
