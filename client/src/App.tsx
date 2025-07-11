@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Customer from "@/pages/customer";
 import Barber from "@/pages/barber";
+import BarberLogin from "@/pages/barber-login";
+import BarberDashboard from "@/pages/barber-dashboard";
 import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
 import CustomerQueue from "@/pages/customer-queue";
@@ -18,6 +20,8 @@ function Router() {
       <Route path="/customer/queue" component={CustomerQueue} />
       <Route path="/customer/now" component={CustomerNow} />
       <Route path="/barber" component={Barber} />
+      <Route path="/barber/login" component={BarberLogin} />
+      <Route path="/barber/dashboard" component={BarberDashboard} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/" component={Customer} />

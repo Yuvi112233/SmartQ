@@ -31,8 +31,8 @@ export default function CustomerQueue() {
   });
 
   useEffect(() => {
-    // Check if customer is first in queue and redirect to "now" page
-    if (customerInfo && customerInfo.position === 1 && customerInfo.status === "waiting") {
+    // Check if customer has been called and redirect to "now" page
+    if (customerInfo && customerInfo.status === "called") {
       navigate("/customer/now");
     }
   }, [customerInfo, navigate]);
@@ -50,6 +50,17 @@ export default function CustomerQueue() {
   const currentPosition = customerInfo?.position || 0;
   const estimatedWait = getEstimatedWaitTime(currentPosition);
   const progressPercentage = totalInQueue > 0 ? ((totalInQueue - currentPosition + 1) / totalInQueue) * 100 : 0;
+  
+  // Show different message based on status
+  const getStatusMessage = () => {
+    if (customerInfo?.status === "called") {
+      return "You've been called! Please proceed to the service area.";
+    }
+    if (currentPosition === 1) {
+      return "You're next! Please be ready.";
+    }
+    return `${currentPosition - 1} people ahead of you`;
+  };
 
   if (isLoading) {
     return (
@@ -101,7 +112,7 @@ export default function CustomerQueue() {
                 {currentPosition}
               </div>
               <p className="text-gray-600">
-                {currentPosition === 1 ? "You're next!" : `people ahead of you`}
+                {getStatusMessage()}
               </p>
             </div>
 

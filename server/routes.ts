@@ -55,6 +55,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Barber login (same as admin for now)
+  app.post("/api/barber/login", async (req, res) => {
+    try {
+      const validatedData = loginSchema.parse(req.body);
+      const admin = await storage.validateAdmin(validatedData.username, validatedData.password);
+      
+      if (admin) {
+        const token = jwt.sign(
+          { id: admin.id, username: admin.username },
+          JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+        res.json({ token, admin: { id: admin.id, username: admin.username } });
+      } else {
+        res.status(401).json({ message: "Invalid credentials" });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Login failed" });
+      }
+    }
+  });
+
   // Check WhatsApp session status
   app.get("/api/whatsapp/status", authenticateToken, async (req, res) => {
     try {
@@ -83,6 +108,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to send message" });
+    }
+  });
+
+  // Call next customer (admin/barber only)
+  app.post("/api/queue/call-next", authenticateToken, async (req, res) => {
+    try {
+      const queue = await storage.getQueue();
+      if (queue.length === 0) {
+        return res.status(400).json({ message: "No customers in queue" });
+      }
+
+      const nextCustomer = queue[0];
+      
+      // Update customer status to "called"
+      await storage.updateQueueEntryStatus(nextCustomer.id, "called");
+      
+      // Send WhatsApp message if connected
+      try {
+        const message = `Hi ${nextCustomer.name}! It's your turn. Please proceed to the service area. Thank you for waiting! - SmartQ`;
+        await whatsappService.sendMessage(nextCustomer.phone, message);
+      } catch (error) {
+        console.log("WhatsApp message failed:", error);
+      }
+      
+      res.json({ 
+        message: "Next customer called successfully", 
+        customer: nextCustomer 
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to call next customer" });
     }
   });
 

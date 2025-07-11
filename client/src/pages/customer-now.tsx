@@ -53,8 +53,8 @@ export default function CustomerNow() {
   });
 
   useEffect(() => {
-    // Check if customer is not first in queue anymore
-    if (customerInfo && customerInfo.position !== 1 && customerInfo.status === "waiting") {
+    // Check if customer status is not "called" anymore
+    if (customerInfo && customerInfo.status !== "called") {
       navigate("/customer/queue");
     }
   }, [customerInfo, navigate]);
@@ -67,7 +67,7 @@ export default function CustomerNow() {
     );
   }
 
-  if (!customerInfo || (customerInfo.position !== 1 && customerInfo.status !== "called")) {
+  if (!customerInfo || customerInfo.status !== "called") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <Card className="max-w-md mx-auto">
