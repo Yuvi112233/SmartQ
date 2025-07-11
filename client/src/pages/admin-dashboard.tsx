@@ -160,7 +160,10 @@ export default function AdminDashboard() {
 
   const reconnectWhatsAppMutation = useMutation({
     mutationFn: async (clearSession: boolean = false) => {
+      console.log("Reconnect mutation started with clearSession:", clearSession);
       const token = localStorage.getItem("adminToken");
+      console.log("Token exists:", !!token);
+      
       const response = await fetch("/api/whatsapp/login", {
         method: "POST",
         headers: {
@@ -170,11 +173,18 @@ export default function AdminDashboard() {
         credentials: "include",
         body: JSON.stringify({ clearSession }),
       });
+      
+      console.log("Response status:", response.status);
+      
       if (!response.ok) {
         const error = await response.json();
+        console.error("Error response:", error);
         throw new Error(error.message);
       }
-      return response.json();
+      
+      const data = await response.json();
+      console.log("Success response:", data);
+      return data;
     },
     onSuccess: (data) => {
       toast({
@@ -247,7 +257,10 @@ export default function AdminDashboard() {
                     </span>
                     <div className="flex space-x-2">
                       <Button
-                        onClick={() => reconnectWhatsAppMutation.mutate(false)}
+                        onClick={() => {
+                          console.log("Reconnect button clicked");
+                          reconnectWhatsAppMutation.mutate(false);
+                        }}
                         disabled={reconnectWhatsAppMutation.isPending}
                         size="sm"
                         variant="outline"
