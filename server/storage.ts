@@ -38,19 +38,25 @@ export class MemStorage implements IStorage {
     this.currentQueueId = 1;
     this.currentAdminId = 1;
     
-    // Create default admin
+    // Create default admin synchronously
     this.createDefaultAdmin();
   }
 
-  private async createDefaultAdmin() {
-    const hashedPassword = await bcrypt.hash("smartq123", 10);
+  private createDefaultAdmin() {
+    // Create admin with a simple hash for development
     const admin: Admin = {
       id: this.currentAdminId++,
       username: "admin",
-      password: hashedPassword,
+      password: "$2b$10$sampleHashForDevelopment.smartq123", // This will be replaced by proper hash
       created_at: new Date(),
     };
     this.admins.set(admin.id, admin);
+    
+    // Properly hash the password asynchronously
+    bcrypt.hash("smartq123", 10).then(hashedPassword => {
+      admin.password = hashedPassword;
+      this.admins.set(admin.id, admin);
+    });
   }
 
   async getUser(id: number): Promise<QueueEntry | undefined> {
@@ -141,9 +147,16 @@ export class MemStorage implements IStorage {
   }
 
   async validateAdmin(username: string, password: string): Promise<Admin | null> {
+    console.log(`Login attempt for username: ${username}`);
     const admin = await this.getAdminByUsername(username);
-    if (admin && await bcrypt.compare(password, admin.password)) {
-      return admin;
+    console.log(`Admin found: ${admin ? 'Yes' : 'No'}`);
+    if (admin) {
+      console.log(`Comparing password with hash: ${admin.password.substring(0, 10)}...`);
+      const isValid = await bcrypt.compare(password, admin.password);
+      console.log(`Password valid: ${isValid}`);
+      if (isValid) {
+        return admin;
+      }
     }
     return null;
   }
