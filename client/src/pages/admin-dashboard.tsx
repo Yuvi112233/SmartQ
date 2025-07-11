@@ -59,6 +59,28 @@ export default function AdminDashboard() {
       });
     });
     
+    // Check initial connection status
+    const checkInitialStatus = async () => {
+      try {
+        const token = localStorage.getItem("adminToken");
+        if (token) {
+          const response = await fetch("/api/whatsapp/status", {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setIsWhatsAppConnected(data.connected);
+          }
+        }
+      } catch (error) {
+        console.log("Failed to check initial WhatsApp status:", error);
+      }
+    };
+    
+    checkInitialStatus();
+    
     return () => {
       socket.disconnect();
     };
@@ -69,11 +91,12 @@ export default function AdminDashboard() {
     refetchInterval: 3000,
   });
 
-  const { data: whatsappStatus } = useQuery({
-    queryKey: ["/api/whatsapp/status"],
-    refetchInterval: 10000,
-    retry: false,
-  });
+  // Remove the polling query since we're using Socket.IO for real-time updates
+  // const { data: whatsappStatus } = useQuery({
+  //   queryKey: ["/api/whatsapp/status"],
+  //   refetchInterval: 10000,
+  //   retry: false,
+  // });
 
   const callNextMutation = useMutation({
     mutationFn: async () => {

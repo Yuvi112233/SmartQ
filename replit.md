@@ -18,6 +18,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Implemented duplicate entry prevention
 ✓ Added customer arrival confirmation system
 ✓ Created comprehensive admin dashboard with queue management
+✓ Fixed barber login authentication system (admin/smartq123)
+✓ Added Socket.IO for real-time WhatsApp connection monitoring
+✓ Implemented WhatsApp reconnection system with QR code display
+✓ Added real-time connection status updates via Socket.IO
 
 ## System Architecture
 
@@ -130,7 +134,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Admin Endpoints (JWT Protected)
 - `POST /api/admin/login` - Admin authentication
+- `POST /api/barber/login` - Barber authentication (same as admin)
 - `GET /api/whatsapp/status` - WhatsApp connection status
+- `POST /api/whatsapp/login` - WhatsApp reconnection endpoint
 - `POST /api/whatsapp/send/:phone` - Send WhatsApp message
 - `POST /api/queue/call-next` - Call next customer with message
 - `DELETE /api/queue/:id` - Remove customer from queue
