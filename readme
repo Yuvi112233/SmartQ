@@ -1,0 +1,206 @@
+# SmartQ
+
+SmartQ is a full-stack smart queue management system for barbershops (or similar businesses), built with a modern MERN-like stack (TypeScript, React, Express, Drizzle ORM, PostgreSQL, and WhatsApp integration). It allows customers to join a queue, notifies them via WhatsApp, and provides real-time dashboards for admins and barbers.
+
+---
+
+## Table of Contents
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Main Features](#main-features)
+- [Backend API Routes](#backend-api-routes)
+- [Frontend Pages & Components](#frontend-pages--components)
+- [Pipelines & Workflows](#pipelines--workflows)
+- [How to Run (Local Development)](#how-to-run-local-development)
+- [Other Important Details](#other-important-details)
+
+---
+
+## Tech Stack
+
+### Frontend
+- *React 18* (with TypeScript)
+- *Vite* (build tool)
+- *Wouter* (routing)
+- *@tanstack/react-query* (data fetching/caching)
+- *Tailwind CSS* (utility-first CSS)
+- *Radix UI* (accessible UI components)
+- *Lucide React* (icons)
+- *Zod* (validation)
+
+### Backend
+- *Node.js* (TypeScript)
+- *Express* (API server)
+- *Socket.IO* (real-time updates)
+- *Drizzle ORM* (database ORM)
+- *PostgreSQL* (database, can be swapped for in-memory for dev)
+- *express-session* (session management)
+- *jsonwebtoken* (JWT auth)
+- *bcryptjs* (password hashing)
+- *@whiskeysockets/baileys* (WhatsApp integration)
+
+### Shared
+- *Zod* (validation schemas)
+- *Drizzle ORM* (shared types)
+
+### Build/Dev Tools
+- *Vite* (frontend dev/build)
+- *tsx* (TypeScript node runner)
+- *esbuild* (backend bundling)
+- *drizzle-kit* (DB migrations)
+- *Replit plugins* (optional, for Replit dev)
+
+---
+
+## Project Structure
+
+
+SmartQ-main/
+  client/           # Frontend React app
+    src/
+      pages/        # Main pages (admin, barber, customer, etc.)
+      components/   # UI and logic components
+      hooks/        # Custom React hooks
+      lib/          # Query client, utils
+      index.css     # Tailwind CSS
+      main.tsx      # React entry point
+    index.html      # HTML entry
+  server/           # Backend Express server
+    index.ts        # Main server entry
+    routes.ts       # All API routes
+    storage.ts      # In-memory or DB storage logic
+    whatsapp.ts     # WhatsApp integration
+    vite.ts         # Vite dev server integration
+  shared/           # Shared types and validation schemas
+    schema.ts
+  drizzle.config.ts # Drizzle ORM config
+  package.json      # Project dependencies/scripts
+  tsconfig.json     # TypeScript config
+  vite.config.ts    # Vite config
+  ...
+
+
+---
+
+## Main Features
+- *Customer Queue*: Customers join via phone/name, see their position, and get notified when it's their turn.
+- *Admin Dashboard*: Manage queue, call next customer, reconnect WhatsApp, see stats.
+- *Barber Dashboard*: Similar to admin, focused on queue management.
+- *WhatsApp Integration*: Sends notifications to customers when it's their turn.
+- *Real-time Updates*: Uses Socket.IO for instant queue updates.
+- *Authentication*: Admin/Barber login with JWT/session.
+- *Responsive UI*: Mobile-friendly, modern design.
+
+---
+
+## Backend API Routes
+
+| Method | Endpoint                        | Description                                  |
+|--------|----------------------------------|----------------------------------------------|
+| POST   | /api/admin/login                | Admin login (returns JWT + session)          |
+| POST   | /api/barber/login               | Barber login (same as admin)                 |
+| GET    | /api/whatsapp/status            | WhatsApp connection/session status           |
+| GET    | /api/whatsapp/qr                | Get QR code for WhatsApp login               |
+| POST   | /api/whatsapp/login             | Reconnect WhatsApp (optionally clear session)|
+| POST   | /api/whatsapp/send/:phone       | Send WhatsApp message to a phone             |
+| POST   | /api/queue/call-next            | Call next customer (admin/barber only)       |
+| POST   | /api/queue                      | Add customer to queue                        |
+| GET    | /api/queue                      | Get current queue                            |
+| DELETE | /api/queue/:id                  | Remove customer from queue                   |
+| GET    | /api/queue/position/:phone      | Get queue position for a phone               |
+| GET    | /api/queue/customer/:phone      | Get customer queue info by phone             |
+| POST   | /api/customer/reached/:phone    | Customer confirms they have reached          |
+
+- *Auth*: Most admin/barber routes require JWT in Authorization header.
+- *WhatsApp*: Some endpoints are public for QR/status, others require auth.
+
+---
+
+## Frontend Pages & Components
+
+- /customer           - Customer landing, join queue form, queue status
+- /customer/queue     - Customer's position and status in queue
+- /customer/now       - Notified when it's their turn, confirm arrival
+- /barber/login       - Barber login
+- /barber/dashboard   - Barber dashboard (queue management)
+- /admin/login        - Admin login
+- /admin/dashboard    - Admin dashboard (queue management, WhatsApp control)
+- /                   - Redirects to /customer
+- NotFound            - 404 page
+
+*Key Components:*
+- CustomerForm        - Form to join queue
+- QueueStatus         - Shows queue stats
+- AdminDashboard      - Admin panel
+- BarberDashboard     - Barber panel
+- Toaster             - Toast notifications
+- Dialog, Card, etc. - UI primitives (Radix UI)
+
+---
+
+## Pipelines & Workflows
+
+- *Frontend*: Built with Vite, entry at client/src/main.tsx. Uses React, Tailwind, and Radix UI. Run with Vite dev server in development.
+- *Backend*: Entry at server/index.ts. Uses Express, Socket.IO, Drizzle ORM, and WhatsApp integration. Run with tsx in development, bundled with esbuild for production.
+- *Database*: Uses Drizzle ORM with PostgreSQL (can run in-memory for dev). Migrations managed with drizzle-kit.
+- *WhatsApp*: Uses Baileys library for WhatsApp Web automation. Requires scanning QR code for initial login.
+- *Session/Auth*: Uses express-session and JWT for admin/barber auth.
+
+---
+
+## How to Run (Local Development)
+
+### 1. Install Dependencies
+sh
+npm install
+
+
+### 2. Set Environment Variables
+- Create a .env file in the root with:
+  - DATABASE_URL=postgres://... (for PostgreSQL)
+  - SESSION_SECRET=your-session-secret
+  - JWT_SECRET=your-jwt-secret
+  - PORT=5000 (optional, default is 5000)
+
+### 3. Windows Users
+- The scripts use NODE_ENV=... which doesn't work natively on Windows CMD/PowerShell.
+- Use [cross-env](https://www.npmjs.com/package/cross-env) or set env vars manually:
+  - Example: set NODE_ENV=development && tsx server/index.ts
+
+### 4. Run in Development
+sh
+# Backend + Frontend (single process)
+npm run dev
+
+- This starts the Express server (API + static frontend in dev mode).
+- Vite is used for frontend HMR in development.
+
+### 5. Build for Production
+sh
+npm run build
+npm start
+
+- This bundles the backend and frontend for production.
+
+### 6. Database Migrations
+sh
+npm run db:push
+
+- Pushes schema to the database using Drizzle ORM.
+
+---
+
+## Other Important Details
+
+- *Default Admin Credentials*: admin / smartq123
+- *WhatsApp Integration*: Requires scanning QR code on first run. Reconnect via admin dashboard if disconnected.
+- *Session Storage*: Uses in-memory by default, can be configured for PostgreSQL.
+- *Real-time*: Uses Socket.IO for instant updates to dashboards.
+- *Validation*: All forms and API inputs validated with Zod.
+- *Error Handling*: Centralized error handler in Express.
+- *Mobile Friendly*: UI is responsive and works on mobile devices.
+
+---
+
+## Contact / Support
+For issues or questions, please contact the repository maintainer or open an issue.
