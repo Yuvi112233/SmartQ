@@ -36,9 +36,18 @@ export default function BarberDashboard() {
   const callNextMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem("barberToken");
-      const response = await apiRequest("POST", "/api/queue/call-next", {}, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch("/api/queue/call-next", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -60,9 +69,18 @@ export default function BarberDashboard() {
   const removeCustomerMutation = useMutation({
     mutationFn: async (id: number) => {
       const token = localStorage.getItem("barberToken");
-      const response = await apiRequest("DELETE", `/api/queue/${id}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(`/api/queue/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
       return response.json();
     },
     onSuccess: () => {

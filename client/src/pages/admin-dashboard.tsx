@@ -62,17 +62,12 @@ export default function AdminDashboard() {
     // Check initial connection status
     const checkInitialStatus = async () => {
       try {
-        const token = localStorage.getItem("adminToken");
-        if (token) {
-          const response = await fetch("/api/whatsapp/status", {
-            headers: {
-              "Authorization": `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setIsWhatsAppConnected(data.connected);
-          }
+        const response = await fetch("/api/whatsapp/status", {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsWhatsAppConnected(data.connected);
         }
       } catch (error) {
         console.log("Failed to check initial WhatsApp status:", error);
@@ -107,6 +102,7 @@ export default function AdminDashboard() {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
       if (!response.ok) {
         const error = await response.json();
@@ -159,6 +155,7 @@ export default function AdminDashboard() {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        credentials: "include",
       });
       if (!response.ok) {
         const error = await response.json();

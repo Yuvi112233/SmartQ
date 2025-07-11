@@ -27,6 +27,31 @@ function authenticateToken(req: any, res: any, next: any) {
   });
 }
 
+// Middleware to check session or token (more flexible)
+function requireAuth(req: any, res: any, next: any) {
+  // Check for session first
+  if (req.session && req.session.user) {
+    req.user = req.session.user;
+    return next();
+  }
+
+  // Fall back to JWT token
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+    req.user = user;
+    next();
+  });
+}
+
 export async function registerRoutes(app: Express, io?: SocketIOServer): Promise<Server> {
   // Initialize WhatsApp service with Socket.IO
   if (io) {
@@ -41,6 +66,10 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
       const admin = await storage.validateAdmin(validatedData.username, validatedData.password);
       
       if (admin) {
+        // Set session
+        req.session.user = { id: admin.id, username: admin.username };
+        
+        // Also provide JWT token for compatibility
         const token = jwt.sign(
           { id: admin.id, username: admin.username },
           JWT_SECRET,
@@ -66,6 +95,10 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
       const admin = await storage.validateAdmin(validatedData.username, validatedData.password);
       
       if (admin) {
+        // Set session
+        req.session.user = { id: admin.id, username: admin.username };
+        
+        // Also provide JWT token for compatibility
         const token = jwt.sign(
           { id: admin.id, username: admin.username },
           JWT_SECRET,
@@ -84,8 +117,8 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
     }
   });
 
-  // Check WhatsApp session status
-  app.get("/api/whatsapp/status", authenticateToken, async (req, res) => {
+  // Check WhatsApp session status (accessible without strict auth to prevent 401 spam)
+  app.get("/api/whatsapp/status", async (req, res) => {
     try {
       const isActive = whatsappService.isSessionActive();
       res.json({ connected: isActive });
@@ -95,7 +128,7 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
   });
 
   // WhatsApp reconnection endpoint
-  app.post("/api/whatsapp/login", authenticateToken, async (req, res) => {
+  app.post("/api/whatsapp/login", requireAuth, async (req, res) => {
     try {
       // Force disconnect existing connection
       await whatsappService.disconnect();
@@ -114,7 +147,7 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
   });
 
   // Send WhatsApp message
-  app.post("/api/whatsapp/send/:phone", authenticateToken, async (req, res) => {
+  app.post("/api/whatsapp/send/:phone", requireAuth, async (req, res) => {
     try {
       const phone = req.params.phone;
       const { message } = req.body;
@@ -135,7 +168,7 @@ export async function registerRoutes(app: Express, io?: SocketIOServer): Promise
   });
 
   // Call next customer (admin/barber only)
-  app.post("/api/queue/call-next", authenticateToken, async (req, res) => {
+  app.post("/api/queue/call-next", requireAuth, async (req, res) => {
     try {
       const queue = await storage.getQueue();
       if (queue.length === 0) {
